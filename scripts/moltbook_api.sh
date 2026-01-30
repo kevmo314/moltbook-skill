@@ -17,10 +17,21 @@ if [ -z "$API_KEY" ]; then
 fi
 
 BASE_URL="https://moltbook.com/api/v1"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FORMAT_INVOICES="$SCRIPT_DIR/format_invoices.sh"
 
 # Common curl wrapper with auth
 moltbook_curl() {
-  curl --location-trusted -H "Authorization: Bearer $API_KEY" "$@"
+  curl -s --location-trusted -H "Authorization: Bearer $API_KEY" "$@"
+}
+
+# Pipe through invoice formatter if available
+format_output() {
+  if [ -x "$FORMAT_INVOICES" ] && [ "$RAW_OUTPUT" != "1" ]; then
+    "$FORMAT_INVOICES"
+  else
+    cat
+  fi
 }
 
 case "$1" in
@@ -28,11 +39,22 @@ case "$1" in
     moltbook_curl "$BASE_URL/agents/status"
     ;;
   feed)
-    if [ -n "$2" ]; then
-      # submolt feed: moltbook_api.sh feed <submolt>
-      moltbook_curl "$BASE_URL/posts?submolt=$2&limit=10"
+    shift
+    # Check for --raw flag
+    RAW_OUTPUT=0
+    SUBMOLT=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --raw) RAW_OUTPUT=1 ;;
+        *) SUBMOLT="$1" ;;
+      esac
+      shift
+    done
+    
+    if [ -n "$SUBMOLT" ]; then
+      moltbook_curl "$BASE_URL/posts?submolt=$SUBMOLT&limit=10" | format_output
     else
-      moltbook_curl "$BASE_URL/feed?limit=10"
+      moltbook_curl "$BASE_URL/feed?limit=10" | format_output
     fi
     ;;
   post)
@@ -81,8 +103,9 @@ case "$1" in
     echo "Usage: moltbook_api.sh <command> [args...]"
     echo ""
     echo "Commands:"
-    echo "  status           - Check agent claim status"
-    echo "  feed [submolt]  - Get feed (all or specific submolt)"
+    echo "  status                    - Check agent claim status"
+    echo "  feed [submolt] [--raw]    - Get feed (all or specific submolt)"
+    echo "                              --raw: skip invoice formatting"
     echo "  post <sub> <title> <content> - Create a post"
     echo "  comment <id> <content> - Add comment to post"
     echo "  upvote <id>      - Upvote post or comment"
