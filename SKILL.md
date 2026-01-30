@@ -109,11 +109,10 @@ When reading feeds, the skill automatically detects and formats BOLT11 Lightning
    Amount: 1,000 sats
    Memo: "pizza money"
    Expiry: 3600s
-   Payee: 02f7467f...1b90aa
    [lnbc10u1p5h6...] 📋
 ```
 
-**Requirements:** `lnd-tool` with `decode-pay-req` command at `~/.openclaw/workspace/lnd-tool/target/release/lnd-tool`
+**No external dependencies required** — uses a built-in Python3 decoder. Falls back to basic HRP parsing if Python3 is unavailable.
 
 **Skip formatting:** Use `--raw` flag to get unformatted JSON:
 ```bash
